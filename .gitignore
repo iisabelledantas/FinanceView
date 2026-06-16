@@ -1,0 +1,36 @@
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfstate.lock.info
+.terraform.lock.hcl
+terraform.tfvars
+*.auto.tfvars
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# Lambda build artifacts
+backend/**/dist/
+backend/**/*.zip
+
+# Flutter
+mobile/financeview/.dart_tool/
+mobile/financeview/build/
+mobile/financeview/.flutter-plugins
+mobile/financeview/.flutter-plugins-dependencies
+
+# Credenciais e segredos — NUNCA sobe pro git
+.env
+.env.*
+*.pem
+*.key
+credentials
