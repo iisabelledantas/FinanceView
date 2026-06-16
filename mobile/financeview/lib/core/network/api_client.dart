@@ -57,6 +57,14 @@ class ApiClient {
       throw ApiClientException.fromDio(error);
     }
   }
+
+  Future<Response> delete(String path, {dynamic data}) async {
+    try {
+      return await _dio.delete(path, data: data);
+    } on DioException catch (error) {
+      throw ApiClientException.fromDio(error);
+    }
+  }
 }
 
 class ApiClientException implements Exception {
@@ -71,6 +79,11 @@ class ApiClientException implements Exception {
       return const ApiClientException(
         'Sua sessão expirou. Faça login novamente.',
       );
+    }
+
+    final backendMessage = _backendErrorMessage(error.response?.data);
+    if (backendMessage != null) {
+      return ApiClientException(backendMessage);
     }
 
     if (statusCode != null && statusCode >= 500) {
@@ -91,6 +104,13 @@ class ApiClientException implements Exception {
     return const ApiClientException(
       'Não foi possível carregar os dados. Tente novamente.',
     );
+  }
+
+  static String? _backendErrorMessage(dynamic data) {
+    if (data is Map && data['error'] is String) {
+      return data['error'] as String;
+    }
+    return null;
   }
 
   @override

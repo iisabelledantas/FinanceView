@@ -55,6 +55,12 @@ resource "aws_api_gateway_resource" "insights" {
   path_part   = "insights"
 }
 
+resource "aws_api_gateway_resource" "transactions" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  parent_id   = aws_api_gateway_rest_api.main.root_resource_id
+  path_part   = "transactions"
+}
+
 resource "aws_api_gateway_resource" "budgets" {
   rest_api_id = aws_api_gateway_rest_api.main.id
   parent_id   = aws_api_gateway_rest_api.main.root_resource_id
@@ -75,11 +81,12 @@ resource "aws_api_gateway_resource" "upload_url" {
 
 locals {
   cors_resource_ids = {
-    statements = aws_api_gateway_resource.statements.id
-    insights   = aws_api_gateway_resource.insights.id
-    budgets    = aws_api_gateway_resource.budgets.id
-    market     = aws_api_gateway_resource.market.id
-    upload_url = aws_api_gateway_resource.upload_url.id
+    statements   = aws_api_gateway_resource.statements.id
+    insights     = aws_api_gateway_resource.insights.id
+    transactions = aws_api_gateway_resource.transactions.id
+    budgets      = aws_api_gateway_resource.budgets.id
+    market       = aws_api_gateway_resource.market.id
+    upload_url   = aws_api_gateway_resource.upload_url.id
   }
 }
 
@@ -130,7 +137,7 @@ resource "aws_api_gateway_integration_response" "cors" {
 
   response_parameters = {
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
-    "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,DELETE,OPTIONS'"
     "method.response.header.Access-Control-Allow-Origin"  = "'*'"
   }
 }
@@ -142,7 +149,7 @@ resource "aws_api_gateway_gateway_response" "default_4xx" {
   response_parameters = {
     "gatewayresponse.header.Access-Control-Allow-Origin"  = "'*'"
     "gatewayresponse.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
-    "gatewayresponse.header.Access-Control-Allow-Methods" = "'GET,POST,OPTIONS'"
+    "gatewayresponse.header.Access-Control-Allow-Methods" = "'GET,POST,DELETE,OPTIONS'"
   }
 }
 
@@ -153,7 +160,7 @@ resource "aws_api_gateway_gateway_response" "default_5xx" {
   response_parameters = {
     "gatewayresponse.header.Access-Control-Allow-Origin"  = "'*'"
     "gatewayresponse.header.Access-Control-Allow-Headers" = "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
-    "gatewayresponse.header.Access-Control-Allow-Methods" = "'GET,POST,OPTIONS'"
+    "gatewayresponse.header.Access-Control-Allow-Methods" = "'GET,POST,DELETE,OPTIONS'"
   }
 }
 
@@ -204,6 +211,23 @@ resource "aws_api_gateway_integration" "get_insights" {
   rest_api_id             = aws_api_gateway_rest_api.main.id
   resource_id             = aws_api_gateway_resource.insights.id
   http_method             = aws_api_gateway_method.get_insights.http_method
+  type                    = "AWS_PROXY"
+  integration_http_method = "POST"
+  uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.insights_function_arn}/invocations"
+}
+
+resource "aws_api_gateway_method" "delete_transactions" {
+  rest_api_id   = aws_api_gateway_rest_api.main.id
+  resource_id   = aws_api_gateway_resource.transactions.id
+  http_method   = "DELETE"
+  authorization = "COGNITO_USER_POOLS"
+  authorizer_id = aws_api_gateway_authorizer.cognito.id
+}
+
+resource "aws_api_gateway_integration" "delete_transactions" {
+  rest_api_id             = aws_api_gateway_rest_api.main.id
+  resource_id             = aws_api_gateway_resource.transactions.id
+  http_method             = aws_api_gateway_method.delete_transactions.http_method
   type                    = "AWS_PROXY"
   integration_http_method = "POST"
   uri                     = "arn:aws:apigateway:${data.aws_region.current.name}:lambda:path/2015-03-31/functions/${var.insights_function_arn}/invocations"
@@ -286,6 +310,7 @@ resource "aws_api_gateway_deployment" "main" {
       aws_api_gateway_method.post_statements.id,
       aws_api_gateway_method.post_upload_url.id,
       aws_api_gateway_method.get_insights.id,
+      aws_api_gateway_method.delete_transactions.id,
       aws_api_gateway_method.get_budgets.id,
       aws_api_gateway_method.post_budgets.id,
       aws_api_gateway_method.get_market.id,
@@ -293,6 +318,7 @@ resource "aws_api_gateway_deployment" "main" {
       aws_api_gateway_integration.post_statements.id,
       aws_api_gateway_integration.post_upload_url.id,
       aws_api_gateway_integration.get_insights.id,
+      aws_api_gateway_integration.delete_transactions.id,
       aws_api_gateway_integration.get_budgets.id,
       aws_api_gateway_integration.post_budgets.id,
       aws_api_gateway_integration.get_market.id,
@@ -310,6 +336,7 @@ resource "aws_api_gateway_deployment" "main" {
     aws_api_gateway_integration.post_statements,
     aws_api_gateway_integration.post_upload_url,
     aws_api_gateway_integration.get_insights,
+    aws_api_gateway_integration.delete_transactions,
     aws_api_gateway_integration.get_budgets,
     aws_api_gateway_integration.post_budgets,
     aws_api_gateway_integration.get_market,

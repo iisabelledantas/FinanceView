@@ -2,8 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../../core/network/api_client.dart';
 
-final insightsRepositoryProvider = Provider((ref) =>
-    InsightsRepository(ref.watch(apiClientProvider)));
+final insightsRepositoryProvider =
+    Provider((ref) => InsightsRepository(ref.watch(apiClientProvider)));
 
 class InsightsRepository {
   final ApiClient _api;
@@ -11,8 +11,7 @@ class InsightsRepository {
 
   InsightsRepository(this._api);
 
-  Future<String> _userId() async =>
-      await _storage.read(key: 'user_id') ?? '';
+  Future<String> _userId() async => await _storage.read(key: 'user_id') ?? '';
 
   Future<Map<String, dynamic>> getInsights({String? period}) async {
     final userId = await _userId();
@@ -41,6 +40,18 @@ class InsightsRepository {
       'monthly_limit': limit,
     });
   }
+
+  Future<void> deleteTransaction({
+    required String transactionId,
+    required String bookingDate,
+  }) async {
+    final userId = await _userId();
+    await _api.delete('/transactions', data: {
+      'user_id': userId,
+      'transactionId': transactionId,
+      'bookingDate': bookingDate,
+    });
+  }
 }
 
 // Provider do período selecionado — compartilhado entre telas
@@ -50,13 +61,14 @@ final selectedPeriodProvider = StateProvider<String>((ref) {
 });
 
 // Provider dos insights — recarrega quando o período muda
-final insightsProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) {
+final insightsProvider =
+    FutureProvider.autoDispose<Map<String, dynamic>>((ref) {
   final period = ref.watch(selectedPeriodProvider);
   return ref.watch(insightsRepositoryProvider).getInsights(period: period);
 });
 
-final marketProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) =>
-    ref.watch(insightsRepositoryProvider).getMarket());
+final marketProvider = FutureProvider.autoDispose<Map<String, dynamic>>(
+    (ref) => ref.watch(insightsRepositoryProvider).getMarket());
 
-final budgetsProvider = FutureProvider.autoDispose<List<dynamic>>((ref) =>
-    ref.watch(insightsRepositoryProvider).getBudgets());
+final budgetsProvider = FutureProvider.autoDispose<List<dynamic>>(
+    (ref) => ref.watch(insightsRepositoryProvider).getBudgets());

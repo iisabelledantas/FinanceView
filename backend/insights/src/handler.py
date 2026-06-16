@@ -18,7 +18,7 @@ topic_arn          = os.environ["BUDGET_ALERTS_TOPIC_ARN"]
 CORS_HEADERS = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token",
-    "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+    "Access-Control-Allow-Methods": "GET,POST,DELETE,OPTIONS",
     "Content-Type": "application/json",
 }
 
@@ -81,6 +81,63 @@ def fetch_ipca() -> float | None:
     return None
 
 
+def group_transactions_by_category(transactions: list[dict]) -> dict[str, list[dict]]:
+    """Agrupa débitos por categoria para a tela de extratos."""
+    grouped: dict[str, list[dict]] = {}
+
+    for txn in transactions:
+        if txn.get("creditDebitType") == "CREDIT":
+            continue
+
+        category = txn.get("category", "outros")
+        grouped.setdefault(category, []).append({
+            "transactionId": txn.get("transactionId", ""),
+            "bookingDate": txn.get("bookingDate", ""),
+            "description": txn.get("description", ""),
+            "category": category,
+            "creditDebitType": txn.get("creditDebitType", "DEBIT"),
+            "transactionType": txn.get("transactionType", "UNKNOWN"),
+            "amount": txn.get("amount", Decimal("0")),
+            "rawAmount": txn.get("rawAmount", Decimal("0")),
+            "currency": txn.get("currency", "BRL"),
+        })
+
+    for category in grouped:
+        grouped[category].sort(
+            key=lambda txn: txn.get("bookingDate", ""),
+            reverse=True,
+        )
+
+    return grouped
+
+
+def list_income_transactions(transactions: list[dict]) -> list[dict]:
+    """Lista créditos para detalhamento de receitas na tela inicial."""
+    income_transactions = []
+
+    for txn in transactions:
+        if txn.get("creditDebitType") != "CREDIT":
+            continue
+
+        income_transactions.append({
+            "transactionId": txn.get("transactionId", ""),
+            "bookingDate": txn.get("bookingDate", ""),
+            "description": txn.get("description", ""),
+            "category": txn.get("category", "outros"),
+            "creditDebitType": txn.get("creditDebitType", "CREDIT"),
+            "transactionType": txn.get("transactionType", "UNKNOWN"),
+            "amount": txn.get("amount", Decimal("0")),
+            "rawAmount": txn.get("rawAmount", Decimal("0")),
+            "currency": txn.get("currency", "BRL"),
+        })
+
+    income_transactions.sort(
+        key=lambda txn: txn.get("bookingDate", ""),
+        reverse=True,
+    )
+    return income_transactions
+
+
 def process_insights(user_id: str, period: str | None = None) -> dict:
     """
     Orquestra o cálculo de insights para um usuário.
@@ -107,6 +164,8 @@ def process_insights(user_id: str, period: str | None = None) -> dict:
         "user_id": user_id,
         "period":  period,
         "health":  health,
+        "transactions_by_category": group_transactions_by_category(transactions),
+        "income_transactions": list_income_transactions(transactions),
         "alerts":  alerts,
         "market": {
             "ipca_monthly": ipca,
@@ -128,6 +187,25 @@ def save_budget(user_id: str, category: str, monthly_limit: float) -> dict:
     }
     transactions_table.put_item(Item=item)
     return item
+
+
+def delete_transaction(user_id: str, transaction_id: str, booking_date: str) -> dict:
+    sk = f"TXN#{booking_date}#{transaction_id}"
+
+    response = transactions_table.delete_item(
+        Key={
+            "PK": f"USER#{user_id}",
+            "SK": sk,
+        },
+        ReturnValues="ALL_OLD",
+    )
+
+    deleted = "Attributes" in response
+    return {
+        "deleted": deleted,
+        "transactionId": transaction_id,
+        "bookingDate": booking_date,
+    }
 
 
 def get_event_body(event: dict) -> dict:
@@ -190,6 +268,13 @@ def handler(event, context):
             if not category or monthly_limit is None:
                 return response(400, {"error": "category e monthly_limit são obrigatórios"})
             return response(201, save_budget(user_id, category, float(monthly_limit)))
+
+        if path.endswith("/transactions") and method == "DELETE":
+            transaction_id = body.get("transactionId")
+            booking_date = body.get("bookingDate")
+            if not transaction_id or not booking_date:
+                return response(400, {"error": "transactionId e bookingDate são obrigatórios"})
+            return response(200, delete_transaction(user_id, transaction_id, booking_date))
 
         return response(404, {"error": "rota não encontrada"})
     except Exception as e:

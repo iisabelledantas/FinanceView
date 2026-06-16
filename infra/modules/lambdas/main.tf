@@ -186,6 +186,15 @@ data "aws_iam_policy_document" "ingest" {
   }
 
   statement {
+    effect = "Allow"
+    actions = [
+      "textract:StartDocumentTextDetection",
+      "textract:GetDocumentTextDetection",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
     effect    = "Allow"
     actions   = ["s3:PutObject"]
     resources = ["${var.files_bucket_arn}/statements/*"]
@@ -195,6 +204,12 @@ data "aws_iam_policy_document" "ingest" {
     effect    = "Allow"
     actions   = ["sqs:SendMessage"]
     resources = [var.transactions_queue_arn]
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["lambda:InvokeFunction"]
+    resources = ["*"]
   }
 }
 
@@ -220,10 +235,13 @@ resource "aws_lambda_function" "ingest" {
   memory_size      = 256
   environment {
     variables = {
-      TRANSACTIONS_TABLE     = var.transactions_table_name
-      FILES_BUCKET           = var.files_bucket_name
-      TRANSACTIONS_QUEUE_URL = var.transactions_queue_url
-      ENVIRONMENT            = var.environment
+      TRANSACTIONS_TABLE             = var.transactions_table_name
+      FILES_BUCKET                   = var.files_bucket_name
+      TRANSACTIONS_QUEUE_URL         = var.transactions_queue_url
+      MAX_PDF_OCR_REINVOKES          = "3"
+      TEXTRACT_MAX_ATTEMPTS          = "25"
+      TEXTRACT_POLL_INTERVAL_SECONDS = "2"
+      ENVIRONMENT                    = var.environment
     }
   }
 }
@@ -258,6 +276,7 @@ data "aws_iam_policy_document" "insights" {
       "dynamodb:Query",
       "dynamodb:GetItem",
       "dynamodb:UpdateItem",
+      "dynamodb:DeleteItem",
     ]
     resources = [
       var.transactions_table_arn,
@@ -329,4 +348,3 @@ resource "aws_lambda_event_source_mapping" "insights_from_sqs" {
   batch_size              = 1
   function_response_types = ["ReportBatchItemFailures"]
 }
-
