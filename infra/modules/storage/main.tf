@@ -2,12 +2,12 @@ resource "aws_dynamodb_table" "transactions" {
   name         = "${var.project_name}-${var.environment}-transactions"
   billing_mode = "PAY_PER_REQUEST"
 
-  hash_key  = "PK" 
+  hash_key  = "PK"
   range_key = "SK"
 
   attribute {
     name = "PK"
-    type = "S" 
+    type = "S"
   }
 
   attribute {
@@ -38,7 +38,7 @@ resource "aws_dynamodb_table" "market_cache" {
 
   ttl {
     attribute_name = "expires_at"
-    enabled        = true 
+    enabled        = true
   }
 
   point_in_time_recovery {
@@ -47,7 +47,7 @@ resource "aws_dynamodb_table" "market_cache" {
 }
 
 resource "random_id" "bucket_suffix" {
-  byte_length = 4 
+  byte_length = 4
 }
 
 resource "aws_s3_bucket" "files" {
@@ -80,7 +80,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "files" {
     status = "Enabled"
 
     filter {
-      prefix = "statements/" 
+      prefix = "statements/"
     }
 
     transition {

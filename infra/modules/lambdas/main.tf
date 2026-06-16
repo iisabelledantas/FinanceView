@@ -38,9 +38,9 @@ data "aws_iam_policy_document" "market_data" {
   statement {
     effect = "Allow"
     actions = [
-      "dynamodb:PutItem",   
-      "dynamodb:GetItem",   
-      "dynamodb:UpdateItem" 
+      "dynamodb:PutItem",
+      "dynamodb:GetItem",
+      "dynamodb:UpdateItem"
     ]
 
     resources = [
@@ -69,12 +69,12 @@ resource "aws_lambda_function" "market_data" {
   source_code_hash = data.archive_file.market_data.output_base64sha256
 
   runtime = "python3.12"
-  handler = "handler.handler" 
+  handler = "handler.handler"
 
   role = aws_iam_role.market_data.arn
 
-  timeout     = 30  
-  memory_size = 128 
+  timeout     = 30
+  memory_size = 128
 
   environment {
     variables = {
@@ -87,7 +87,7 @@ resource "aws_lambda_function" "market_data" {
 
 resource "aws_cloudwatch_log_group" "market_data" {
   name              = "/aws/lambda/${aws_lambda_function.market_data.function_name}"
-  retention_in_days = 7 
+  retention_in_days = 7
 }
 
 data "aws_iam_policy_document" "scheduler_assume_role" {
@@ -129,9 +129,9 @@ resource "aws_scheduler_schedule" "market_data" {
   name        = "${var.project_name}-${var.environment}-market-data-cron"
   description = "Atualiza indicadores de mercado a cada 15 minutos"
 
-  
+
   flexible_time_window {
-    mode = "OFF" 
+    mode = "OFF"
   }
 
   schedule_expression = "rate(15 minutes)"
@@ -165,8 +165,8 @@ resource "aws_iam_role" "ingest" {
 
 data "aws_iam_policy_document" "ingest" {
   statement {
-    effect  = "Allow"
-    actions = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
+    effect    = "Allow"
+    actions   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
     resources = ["arn:aws:logs:*:*:*"]
   }
 
@@ -216,14 +216,14 @@ resource "aws_lambda_function" "ingest" {
   runtime          = "python3.12"
   handler          = "handler.handler"
   role             = aws_iam_role.ingest.arn
-  timeout          = 60   
-  memory_size      = 256  
+  timeout          = 60
+  memory_size      = 256
   environment {
     variables = {
-      TRANSACTIONS_TABLE    = var.transactions_table_name
-      FILES_BUCKET          = var.files_bucket_name
+      TRANSACTIONS_TABLE     = var.transactions_table_name
+      FILES_BUCKET           = var.files_bucket_name
       TRANSACTIONS_QUEUE_URL = var.transactions_queue_url
-      ENVIRONMENT           = var.environment
+      ENVIRONMENT            = var.environment
     }
   }
 }
@@ -253,7 +253,7 @@ data "aws_iam_policy_document" "insights" {
   }
 
   statement {
-    effect  = "Allow"
+    effect = "Allow"
     actions = [
       "dynamodb:Query",
       "dynamodb:GetItem",
@@ -272,7 +272,7 @@ data "aws_iam_policy_document" "insights" {
   }
 
   statement {
-    effect  = "Allow"
+    effect = "Allow"
     actions = [
       "sqs:ReceiveMessage",
       "sqs:DeleteMessage",
@@ -324,9 +324,9 @@ resource "aws_cloudwatch_log_group" "insights" {
 }
 
 resource "aws_lambda_event_source_mapping" "insights_from_sqs" {
-  event_source_arn = var.transactions_queue_arn
-  function_name    = aws_lambda_function.insights.arn
-  batch_size       = 1
+  event_source_arn        = var.transactions_queue_arn
+  function_name           = aws_lambda_function.insights.arn
+  batch_size              = 1
   function_response_types = ["ReportBatchItemFailures"]
 }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../../../shared/widgets/async_state_view.dart';
 import '../../dashboard/data/insights_repository.dart';
 
 class BudgetsScreen extends ConsumerWidget {
@@ -19,7 +20,10 @@ class BudgetsScreen extends ConsumerWidget {
       ),
       body: budgets.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Erro: $e')),
+        error: (e, _) => AsyncErrorView(
+          error: e,
+          onRetry: () => ref.invalidate(budgetsProvider),
+        ),
         data: (list) => list.isEmpty
             ? Center(
                 child: Column(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
+import '../../../../shared/widgets/async_state_view.dart';
 import '../../dashboard/data/insights_repository.dart';
 
 class AnalysisScreen extends ConsumerWidget {
@@ -14,7 +15,10 @@ class AnalysisScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Análise financeira')),
       body: insights.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Erro: $e')),
+        error: (e, _) => AsyncErrorView(
+          error: e,
+          onRetry: () => ref.invalidate(insightsProvider),
+        ),
         data: (data) {
           final health = data['health'] as Map<String, dynamic>? ?? {};
           final monthly =

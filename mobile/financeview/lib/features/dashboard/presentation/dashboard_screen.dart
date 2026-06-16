@@ -42,7 +42,10 @@ class DashboardScreen extends ConsumerWidget {
                   child: CircularProgressIndicator(),
                 ),
               ),
-              error: (e, _) => _ErrorCard(message: e.toString()),
+              error: (e, _) => _ErrorCard(
+                message: e.toString(),
+                onRetry: () => ref.invalidate(insightsProvider),
+              ),
               data: (data) {
                 final health = data['health'] as Map<String, dynamic>? ?? {};
                 final income =
@@ -96,8 +99,10 @@ class DashboardScreen extends ConsumerWidget {
             const SizedBox(height: 8),
             market.when(
               loading: () => const LinearProgressIndicator(),
-              error: (_, __) =>
-                  const _ErrorCard(message: 'Indicadores indisponíveis'),
+              error: (e, _) => _ErrorCard(
+                message: e.toString(),
+                onRetry: () => ref.invalidate(marketProvider),
+              ),
               data: (data) => _MarketCard(data: data),
             ),
           ],
@@ -341,15 +346,38 @@ class _MarketRow extends StatelessWidget {
 
 class _ErrorCard extends StatelessWidget {
   final String message;
-  const _ErrorCard({required this.message});
+  final VoidCallback? onRetry;
+
+  const _ErrorCard({
+    required this.message,
+    this.onRetry,
+  });
+
   @override
   Widget build(BuildContext context) => Card(
         color: Theme.of(context).colorScheme.errorContainer,
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: Text(message,
-              style: TextStyle(
-                  color: Theme.of(context).colorScheme.onErrorContainer)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                message,
+                softWrap: true,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onErrorContainer,
+                ),
+              ),
+              if (onRetry != null) ...[
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  onPressed: onRetry,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Tentar novamente'),
+                ),
+              ],
+            ],
+          ),
         ),
       );
 }
