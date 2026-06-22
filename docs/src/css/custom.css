@@ -1,0 +1,144 @@
+:root {
+  --ifm-color-primary: #0175c2;
+  --ifm-color-primary-dark: #0169af;
+  --ifm-color-primary-darker: #0163a5;
+  --ifm-color-primary-darkest: #015288;
+  --ifm-color-primary-light: #0181d5;
+  --ifm-color-primary-lighter: #0187df;
+  --ifm-color-primary-lightest: #0f9cfb;
+  --ifm-background-color: #f7fbff;
+  --ifm-background-surface-color: #ffffff;
+  --ifm-navbar-background-color: #ffffff;
+  --ifm-footer-background-color: #07111a;
+  --ifm-font-family-base:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  --ifm-heading-font-weight: 750;
+  --ifm-code-font-size: 95%;
+  --ifm-global-radius: 8px;
+  --ifm-link-color: #0175c2;
+  --ifm-menu-color-active: #0175c2;
+  --ifm-breadcrumb-color-active: #0175c2;
+  --financeview-surface: #ffffff;
+  --financeview-surface-variant: #eaf6ff;
+  --financeview-border: rgba(1, 117, 194, 0.16);
+  --financeview-positive: #2e7d32;
+  --financeview-negative: #d32f2f;
+  --financeview-warning: #f9a825;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #40c4ff;
+  --ifm-color-primary-dark: #1cbaff;
+  --ifm-color-primary-darker: #0db5ff;
+  --ifm-color-primary-darkest: #0098dc;
+  --ifm-color-primary-light: #64ceff;
+  --ifm-color-primary-lighter: #76d4ff;
+  --ifm-color-primary-lightest: #ace6ff;
+  --ifm-background-color: #06111b;
+  --ifm-background-surface-color: #0d1b28;
+  --ifm-navbar-background-color: #06111b;
+  --ifm-footer-background-color: #06111b;
+  --ifm-font-color-base: #edf6ff;
+  --ifm-heading-color: #f7fbff;
+  --ifm-link-color: #64ceff;
+  --ifm-menu-color-active: #ace6ff;
+  --ifm-breadcrumb-color-active: #ace6ff;
+  --financeview-surface: #0d1b28;
+  --financeview-surface-variant: #10283b;
+  --financeview-border: rgba(100, 206, 255, 0.16);
+  --financeview-positive: #4caf50;
+  --financeview-negative: #ff5252;
+  --financeview-warning: #ff9800;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}
+
+.navbar {
+  border-bottom: 1px solid var(--financeview-border);
+  box-shadow: none;
+}
+
+.navbar__brand {
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.navbar__logo img {
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.navbar__item,
+.navbar__link {
+  font-weight: 650;
+}
+
+.theme-doc-sidebar-container {
+  border-right: 1px solid var(--financeview-border);
+  background: var(--ifm-background-color);
+}
+
+.menu__link {
+  border-radius: 8px;
+  margin: 2px 0;
+}
+
+.menu__link--active {
+  background: var(--financeview-surface-variant);
+  font-weight: 700;
+}
+
+.theme-doc-markdown {
+  max-width: 920px;
+}
+
+.theme-doc-markdown h1 {
+  color: var(--ifm-heading-color);
+}
+
+.theme-doc-markdown table {
+  display: table;
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--financeview-border);
+  border-radius: 8px;
+  background: var(--financeview-surface);
+}
+
+.theme-doc-markdown th {
+  background: var(--financeview-surface-variant);
+  color: var(--ifm-font-color-base);
+}
+
+.theme-doc-markdown blockquote {
+  border-left-color: var(--ifm-color-primary);
+  background: var(--financeview-surface);
+  border-radius: 0 8px 8px 0;
+  padding: 0.75rem 1rem;
+}
+
+.theme-code-block,
+.theme-admonition,
+.card {
+  border: 1px solid var(--financeview-border);
+  border-radius: 8px;
+}
+
+.theme-code-block {
+  box-shadow: none;
+}
+
+.pagination-nav__link {
+  border-color: var(--financeview-border);
+  border-radius: 8px;
+  background: var(--financeview-surface);
+}
+
+.breadcrumbs__link {
+  border-radius: 8px;
+}
+
+.footer {
+  border-top: 1px solid var(--financeview-border);
+}
