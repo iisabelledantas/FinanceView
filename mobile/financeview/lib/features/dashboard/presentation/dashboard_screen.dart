@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
+import '../../../shared/services/share_service.dart';
 import '../../auth/presentation/auth_provider.dart';
 import '../data/insights_repository.dart';
 
@@ -20,6 +21,15 @@ class DashboardScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('FinanceView'),
         actions: [
+          IconButton(
+            tooltip: 'Compartilhar resumo',
+            icon: const Icon(Icons.share_outlined),
+            onPressed: () => _shareDashboardSummary(
+              context: context,
+              insights: insights.asData?.value,
+              period: period,
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.logout_outlined),
             onPressed: () => ref.read(authProvider.notifier).signOut(),
@@ -56,7 +66,9 @@ class DashboardScreen extends ConsumerWidget {
                 final savings =
                     (health['savings_rate'] as num?)?.toDouble() ?? 0;
                 final savingsMovements =
-                    (health['total_savings_movements'] as num?)?.toDouble() ??
+                    (health['total_savings_balance'] as num?)?.toDouble() ??
+                        (health['total_savings_movements'] as num?)
+                            ?.toDouble() ??
                         0;
                 final byCategory =
                     health['expenses_by_category'] as Map<String, dynamic>? ??
@@ -119,6 +131,41 @@ class DashboardScreen extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+Future<void> _shareDashboardSummary({
+  required BuildContext context,
+  required Map<String, dynamic>? insights,
+  required String period,
+}) async {
+  if (insights == null || insights.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Carregue o resumo antes de compartilhar.')),
+    );
+    return;
+  }
+
+  try {
+    final result = await ShareService.instance.shareMonthlySummary(
+      period: period,
+      insights: insights,
+    );
+    if (!context.mounted) return;
+    if (result == ShareServiceResult.copiedToClipboard) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Compartilhamento indisponível. Resumo copiado para a área de transferência.',
+          ),
+        ),
+      );
+    }
+  } catch (error) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(error.toString())),
     );
   }
 }

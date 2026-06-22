@@ -6,7 +6,7 @@ from decimal import Decimal
 import boto3
 from boto3.dynamodb.conditions import Key
 
-from health_score import calculate_health_score
+from health_score import calculate_health_score, cofrinho_delta, is_savings_transaction
 from budget_checker import check_and_alert, get_budgets
 
 dynamodb = boto3.resource("dynamodb")
@@ -14,7 +14,6 @@ dynamodb = boto3.resource("dynamodb")
 transactions_table = dynamodb.Table(os.environ["TRANSACTIONS_TABLE"])
 market_cache_table = dynamodb.Table(os.environ["MARKET_CACHE_TABLE"])
 topic_arn          = os.environ["BUDGET_ALERTS_TOPIC_ARN"]
-SAVINGS_CATEGORY   = "cofrinho_poupanca"
 
 CORS_HEADERS = {
     "Access-Control-Allow-Origin": "*",
@@ -91,7 +90,7 @@ def group_transactions_by_category(transactions: list[dict]) -> dict[str, list[d
             continue
 
         category = txn.get("category", "outros")
-        if category == SAVINGS_CATEGORY:
+        if is_savings_transaction(txn):
             continue
 
         grouped.setdefault(category, []).append({
@@ -120,9 +119,13 @@ def list_income_transactions(transactions: list[dict]) -> list[dict]:
     income_transactions = []
 
     for txn in transactions:
-        if txn.get("creditDebitType") != "CREDIT":
-            continue
-        if txn.get("category") == SAVINGS_CATEGORY:
+        savings_withdrawal = None
+        if is_savings_transaction(txn):
+            delta = cofrinho_delta(txn)
+            if delta >= 0:
+                continue
+            savings_withdrawal = abs(delta)
+        elif txn.get("creditDebitType") != "CREDIT":
             continue
 
         income_transactions.append({
@@ -130,10 +133,10 @@ def list_income_transactions(transactions: list[dict]) -> list[dict]:
             "bookingDate": txn.get("bookingDate", ""),
             "description": txn.get("description", ""),
             "category": txn.get("category", "outros"),
-            "creditDebitType": txn.get("creditDebitType", "CREDIT"),
+            "creditDebitType": "CREDIT",
             "transactionType": txn.get("transactionType", "UNKNOWN"),
-            "amount": txn.get("amount", Decimal("0")),
-            "rawAmount": txn.get("rawAmount", Decimal("0")),
+            "amount": savings_withdrawal or txn.get("amount", Decimal("0")),
+            "rawAmount": savings_withdrawal or txn.get("rawAmount", Decimal("0")),
             "currency": txn.get("currency", "BRL"),
         })
 

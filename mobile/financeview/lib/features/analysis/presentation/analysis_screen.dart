@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
-import '../../../../shared/widgets/async_state_view.dart';
+import '../../../shared/services/share_service.dart';
+import '../../../shared/widgets/async_state_view.dart';
 import '../../dashboard/data/insights_repository.dart';
 
 class AnalysisScreen extends ConsumerWidget {
@@ -10,9 +11,23 @@ class AnalysisScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final insights = ref.watch(insightsProvider);
+    final period = ref.watch(selectedPeriodProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Análise financeira')),
+      appBar: AppBar(
+        title: const Text('Análise financeira'),
+        actions: [
+          IconButton(
+            tooltip: 'Compartilhar relatório',
+            icon: const Icon(Icons.share_outlined),
+            onPressed: () => _shareAnalysisReport(
+              context: context,
+              insights: insights.asData?.value,
+              period: period,
+            ),
+          ),
+        ],
+      ),
       body: insights.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => AsyncErrorView(
@@ -93,6 +108,42 @@ class AnalysisScreen extends ConsumerWidget {
           );
         },
       ),
+    );
+  }
+}
+
+Future<void> _shareAnalysisReport({
+  required BuildContext context,
+  required Map<String, dynamic>? insights,
+  required String period,
+}) async {
+  if (insights == null || insights.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+          content: Text('Carregue a análise antes de compartilhar.')),
+    );
+    return;
+  }
+
+  try {
+    final result = await ShareService.instance.shareAnalysisReport(
+      period: period,
+      insights: insights,
+    );
+    if (!context.mounted) return;
+    if (result == ShareServiceResult.copiedToClipboard) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Compartilhamento indisponível. Relatório copiado para a área de transferência.',
+          ),
+        ),
+      );
+    }
+  } catch (error) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(error.toString())),
     );
   }
 }

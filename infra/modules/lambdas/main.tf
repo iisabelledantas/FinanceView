@@ -171,8 +171,13 @@ data "aws_iam_policy_document" "ingest" {
   }
 
   statement {
-    effect  = "Allow"
-    actions = ["dynamodb:PutItem", "dynamodb:BatchWriteItem"]
+    effect = "Allow"
+    actions = [
+      "dynamodb:Query",
+      "dynamodb:PutItem",
+      "dynamodb:UpdateItem",
+      "dynamodb:BatchWriteItem",
+    ]
     resources = [
       var.transactions_table_arn,
       "${var.transactions_table_arn}/*",
@@ -275,6 +280,7 @@ data "aws_iam_policy_document" "insights" {
     actions = [
       "dynamodb:Query",
       "dynamodb:GetItem",
+      "dynamodb:PutItem",
       "dynamodb:UpdateItem",
       "dynamodb:DeleteItem",
     ]

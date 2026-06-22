@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../../core/network/api_client.dart';
+import '../../../shared/utils/category_format.dart';
 
 enum ImportStatus {
   idle,
@@ -588,7 +589,7 @@ class _TransactionReviewItem extends StatelessWidget {
                         .map(
                           (category) => DropdownMenuItem(
                             value: category,
-                            child: Text(_formatCategory(category)),
+                            child: Text(formatCategory(category)),
                           ),
                         )
                         .toList(),
@@ -606,28 +607,4 @@ class _TransactionReviewItem extends StatelessWidget {
       ),
     );
   }
-}
-
-String _formatCategory(String category) {
-  const labels = {
-    'alimentacao': 'Alimentação',
-    'transporte': 'Transporte',
-    'moradia': 'Moradia',
-    'saude': 'Saúde',
-    'educacao': 'Educação',
-    'lazer': 'Lazer',
-    'vestuario': 'Vestuário',
-    'financeiro': 'Financeiro',
-    'receita': 'Receita',
-    'salario': 'Salário',
-    'cofrinho_poupanca': 'Cofrinho/Poupança',
-    'outros': 'Outros',
-  };
-  return labels[category] ??
-      category
-          .split('_')
-          .map((part) => part.isEmpty
-              ? part
-              : '${part[0].toUpperCase()}${part.substring(1)}')
-          .join(' ');
 }

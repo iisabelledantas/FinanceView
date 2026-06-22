@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import '../../../../shared/widgets/async_state_view.dart';
+import '../../../shared/utils/category_format.dart';
+import '../../../shared/widgets/async_state_view.dart';
 import '../../dashboard/data/insights_repository.dart';
 
 class TransactionsScreen extends ConsumerStatefulWidget {
@@ -23,7 +24,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       appBar: AppBar(
         title: Text(_selectedCategory == null
             ? 'Transações'
-            : _formatCategory(_selectedCategory!)),
+            : formatCategory(_selectedCategory!)),
         leading: _selectedCategory == null
             ? null
             : IconButton(
@@ -90,8 +91,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                   margin: const EdgeInsets.only(bottom: 8),
                   child: ListTile(
                     leading: CircleAvatar(
-                        child: Icon(_categoryIcon(entry.key), size: 20)),
-                    title: Text(_formatCategory(entry.key),
+                        child: Icon(categoryIcon(entry.key), size: 20)),
+                    title: Text(formatCategory(entry.key),
                         style: const TextStyle(fontWeight: FontWeight.w600)),
                     subtitle: Text('$count transações'),
                     trailing: Row(
@@ -135,7 +136,7 @@ class _CategoryTransactionsView extends StatelessWidget {
   Widget build(BuildContext context) {
     if (transactions.isEmpty) {
       return Center(
-        child: Text('Nenhuma transação em ${_formatCategory(category)}'),
+        child: Text('Nenhuma transação em ${formatCategory(category)}'),
       );
     }
 
@@ -170,7 +171,7 @@ class _CategoryTransactionsView extends StatelessWidget {
             margin: const EdgeInsets.only(bottom: 8),
             child: ListTile(
               leading: CircleAvatar(
-                child: Icon(_categoryIcon(category), size: 20),
+                child: Icon(categoryIcon(category), size: 20),
               ),
               title: Text(description),
               subtitle: Text(date),
@@ -273,42 +274,3 @@ double _transactionAmount(Map<String, dynamic> transaction) {
       double.tryParse(amount?.toString() ?? '') ??
       0;
 }
-
-String _formatCategory(String category) {
-  const labels = {
-    'alimentacao': 'Alimentação',
-    'transporte': 'Transporte',
-    'moradia': 'Moradia',
-    'saude': 'Saúde',
-    'educacao': 'Educação',
-    'lazer': 'Lazer',
-    'vestuario': 'Vestuário',
-    'financeiro': 'Financeiro',
-    'receita': 'Receita',
-    'salario': 'Salário',
-    'cofrinho_poupanca': 'Cofrinho/Poupança',
-    'outros': 'Outros',
-  };
-  if (labels.containsKey(category)) return labels[category]!;
-
-  return category
-      .split('_')
-      .map((part) =>
-          part.isEmpty ? part : '${part[0].toUpperCase()}${part.substring(1)}')
-      .join(' ');
-}
-
-IconData _categoryIcon(String category) => switch (category) {
-      'alimentacao' => Icons.restaurant,
-      'transporte' => Icons.directions_car,
-      'moradia' => Icons.home,
-      'saude' => Icons.local_hospital,
-      'educacao' => Icons.school,
-      'lazer' => Icons.sports_esports,
-      'vestuario' => Icons.checkroom,
-      'financeiro' => Icons.account_balance,
-      'receita' => Icons.payments,
-      'salario' => Icons.payments,
-      'cofrinho_poupanca' => Icons.savings,
-      _ => Icons.category,
-    };

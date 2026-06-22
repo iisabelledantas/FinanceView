@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart'; // adicione este import
 import 'core/router/app_router.dart';
+import 'shared/services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('pt_BR'); // adicione esta linha
+  await NotificationService.instance.initialize();
   runApp(const ProviderScope(child: FinanceViewApp()));
 }
 

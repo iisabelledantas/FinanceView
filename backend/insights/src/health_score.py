@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 
-SAVINGS_CATEGORY = "cofrinho_poupanca"
+SAVINGS_CATEGORIES = {"cofrinho", "cofrinho_poupanca"}
 
 
 def calculate_health_score(transactions: list[dict], ipca_monthly: float | None) -> dict:
@@ -18,7 +18,7 @@ def calculate_health_score(transactions: list[dict], ipca_monthly: float | None)
     """
     total_income   = Decimal("0")
     total_expenses = Decimal("0")
-    total_savings_movements = Decimal("0")
+    savings_balance = Decimal("0")
     by_category: dict[str, Decimal] = {}
     by_month: dict[str, dict]       = {}
 
@@ -28,14 +28,19 @@ def calculate_health_score(transactions: list[dict], ipca_monthly: float | None)
         category   = txn.get("category", "outros")
         txn_type   = txn.get("creditDebitType", "DEBIT")
 
-        if category == SAVINGS_CATEGORY:
-            total_savings_movements += abs(raw_amount)
+        if is_savings_transaction(txn):
+            savings_delta = cofrinho_delta(txn)
+            savings_balance += savings_delta
+            savings_to_account = -savings_delta if savings_delta < 0 else Decimal("0")
+            total_income += savings_to_account
+
             if date:
                 if date not in by_month:
                     by_month[date] = {"income": Decimal("0"), "expenses": Decimal("0")}
-                by_month[date]["savings_movements"] = (
-                    by_month[date].get("savings_movements", Decimal("0"))
-                    + abs(raw_amount)
+                by_month[date]["income"] += savings_to_account
+                by_month[date]["savings_balance"] = (
+                    by_month[date].get("savings_balance", Decimal("0"))
+                    + savings_delta
                 )
             continue
 
@@ -73,17 +78,44 @@ def calculate_health_score(transactions: list[dict], ipca_monthly: float | None)
     return {
         "total_income":        float(total_income),
         "total_expenses":      float(total_expenses),
-        "total_savings_movements": float(total_savings_movements),
+        "total_savings_movements": float(savings_balance),
+        "total_savings_balance": float(savings_balance),
         "savings_rate":        round(savings_rate, 2),
         "expenses_by_category": {k: float(v) for k, v in by_category.items()},
         "monthly_evolution":   {
             month: {
                 "income":   float(v["income"]),
                 "expenses": float(v["expenses"]),
-                "savings_movements": float(v.get("savings_movements", Decimal("0"))),
+                "savings_movements": float(v.get("savings_balance", Decimal("0"))),
+                "savings_balance": float(v.get("savings_balance", Decimal("0"))),
                 "balance":  float(v["income"] - v["expenses"]),
             }
             for month, v in sorted(by_month.items())
         },
         "savings_vs_ipca": savings_vs_ipca,
     }
+
+
+def is_savings_category(category: str) -> bool:
+    return category in SAVINGS_CATEGORIES
+
+
+def is_savings_transaction(txn: dict) -> bool:
+    category = str(txn.get("category", ""))
+    description = str(txn.get("description", "")).casefold()
+
+    return is_savings_category(category) or "cofrinho" in description
+
+
+def cofrinho_delta(txn: dict) -> Decimal:
+    raw_amount = Decimal(str(txn.get("rawAmount", 0)))
+    description = str(txn.get("description", "")).casefold()
+    txn_type = txn.get("creditDebitType", "DEBIT")
+
+    if "resgate" in description:
+        return -abs(raw_amount)
+
+    if "aplicacao" in description or "aplicação" in description:
+        return abs(raw_amount)
+
+    return -abs(raw_amount) if txn_type == "CREDIT" else abs(raw_amount)

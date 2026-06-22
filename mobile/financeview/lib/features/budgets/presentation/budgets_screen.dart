@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import '../../../../shared/widgets/async_state_view.dart';
+import '../../../shared/services/notification_service.dart';
+import '../../../shared/utils/category_format.dart';
+import '../../../shared/widgets/async_state_view.dart';
 import '../../dashboard/data/insights_repository.dart';
 
 class BudgetsScreen extends ConsumerWidget {
@@ -24,26 +28,30 @@ class BudgetsScreen extends ConsumerWidget {
           error: e,
           onRetry: () => ref.invalidate(budgetsProvider),
         ),
-        data: (list) => list.isEmpty
-            ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.account_balance_wallet_outlined,
-                        size: 64, color: Colors.grey),
-                    const SizedBox(height: 16),
-                    Text('Nenhuma meta cadastrada',
-                        style: Theme.of(context).textTheme.bodyLarge),
-                    const SizedBox(height: 8),
-                    const Text('Toque em "Nova meta" para começar'),
-                  ],
-                ),
-              )
-            : ListView.builder(
-                padding: const EdgeInsets.all(16),
-                itemCount: list.length,
-                itemBuilder: (context, i) => _BudgetCard(budget: list[i]),
-              ),
+        data: (list) {
+          _queueBudgetNotifications(list);
+
+          return list.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.account_balance_wallet_outlined,
+                          size: 64, color: Colors.grey),
+                      const SizedBox(height: 16),
+                      Text('Nenhuma meta cadastrada',
+                          style: Theme.of(context).textTheme.bodyLarge),
+                      const SizedBox(height: 8),
+                      const Text('Toque em "Nova meta" para começar'),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: list.length,
+                  itemBuilder: (context, i) => _BudgetCard(budget: list[i]),
+                );
+        },
       ),
     );
   }
@@ -53,6 +61,27 @@ class BudgetsScreen extends ConsumerWidget {
       context: context,
       builder: (_) => const _AddBudgetDialog(),
     );
+  }
+
+  void _queueBudgetNotifications(List<dynamic> budgets) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(NotificationService.instance.notifyMonthlyAnalysisReminder());
+
+      for (final budget in budgets.whereType<Map>()) {
+        final category =
+            budget['SK']?.toString().replaceAll('BUDGET#', '') ?? '';
+        final limit = (budget['monthly_limit'] as num?)?.toDouble() ?? 0;
+        final spent = (budget['current_spent'] as num?)?.toDouble() ?? 0;
+
+        unawaited(
+          NotificationService.instance.notifyBudgetUsage(
+            category: formatCategory(category),
+            spent: spent,
+            limit: limit,
+          ),
+        );
+      }
+    });
   }
 }
 
@@ -158,6 +187,12 @@ class _AddBudgetDialogState extends ConsumerState<_AddBudgetDialog> {
           .saveBudget(_selected, _parseLimit(_limitCtrl.text)!);
 
       ref.invalidate(budgetsProvider);
+      unawaited(
+        NotificationService.instance.notifyBudgetSaved(
+          category: formatCategory(_selected),
+          limit: _parseLimit(_limitCtrl.text)!,
+        ),
+      );
 
       if (!mounted) return;
       final messenger = ScaffoldMessenger.of(context);
@@ -207,7 +242,7 @@ class _BudgetCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Text(category,
+            Text(formatCategory(category),
                 style: Theme.of(context)
                     .textTheme
                     .titleSmall
