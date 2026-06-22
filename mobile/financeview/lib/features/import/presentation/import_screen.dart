@@ -142,7 +142,7 @@ class ImportNotifier extends StateNotifier<ImportState> {
 
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['ofx', 'csv', 'pdf'],
+      allowedExtensions: ['pdf'],
       withData: true,
     );
     if (result == null || result.files.isEmpty) {
@@ -153,6 +153,22 @@ class ImportNotifier extends StateNotifier<ImportState> {
     final file = result.files.first;
     final fileName = file.name;
     final fileType = fileName.split('.').last.toLowerCase();
+    if (fileType != 'pdf') {
+      state = const ImportState(
+        status: ImportStatus.error,
+        message: 'Selecione um extrato em PDF.',
+      );
+      return;
+    }
+
+    if (file.bytes == null) {
+      state = const ImportState(
+        status: ImportStatus.error,
+        message: 'Não foi possível ler o PDF selecionado.',
+      );
+      return;
+    }
+
     final userId = await _storage.read(key: 'user_id') ?? '';
 
     try {
@@ -316,30 +332,6 @@ class ImportScreen extends ConsumerWidget {
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Como exportar seu extrato',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleSmall
-                                  ?.copyWith(fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 8),
-                          const _BankInstruction('Nubank',
-                              'Me -> Exportar extratos -> OFX ou CSV'),
-                          const _BankInstruction('Itaú',
-                              'Extrato -> Exportar ou salvar em PDF/OFX'),
-                          const _BankInstruction('Bradesco',
-                              'Extrato -> Salvar como -> OFX ou PDF'),
-                          const _BankInstruction(
-                              'Inter', 'Extrato -> Exportar -> CSV ou PDF'),
-                        ],
-                      ),
-                    ),
-                  ),
                   const SizedBox(height: 24),
                   GestureDetector(
                     onTap: isActive
@@ -400,11 +392,8 @@ class ImportScreen extends ConsumerWidget {
                               child: const Text('Tentar novamente'),
                             ),
                           ] else ...[
-                            Text('Toque para selecionar arquivo',
+                            Text('Toque para selecionar PDF',
                                 style: Theme.of(context).textTheme.bodyLarge),
-                            const SizedBox(height: 4),
-                            Text('OFX, CSV ou PDF',
-                                style: Theme.of(context).textTheme.bodySmall),
                           ],
                         ],
                       ),
@@ -595,22 +584,4 @@ class _TransactionReviewItem extends StatelessWidget {
       ),
     );
   }
-}
-
-class _BankInstruction extends StatelessWidget {
-  final String bank, instruction;
-  const _BankInstruction(this.bank, this.instruction);
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          SizedBox(
-              width: 72,
-              child: Text(bank,
-                  style: const TextStyle(fontWeight: FontWeight.w600))),
-          Expanded(
-              child: Text(instruction,
-                  style: Theme.of(context).textTheme.bodySmall)),
-        ]),
-      );
 }

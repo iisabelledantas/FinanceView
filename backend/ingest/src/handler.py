@@ -3,7 +3,7 @@ import os
 import boto3
 from decimal import Decimal
 
-from parsers import ofx_parser, csv_parser, pdf_parser
+from parsers import pdf_parser
 from normalizer import normalize
 from categorizer import CATEGORY_RULES, categorize_batch
 
@@ -57,23 +57,6 @@ def download_bytes_from_s3(s3_key: str) -> bytes:
     """Baixa o arquivo do S3 e retorna o conteúdo em bytes."""
     response = s3.get_object(Bucket=bucket, Key=s3_key)
     return response["Body"].read()
-
-
-def decode_file_content(raw_bytes: bytes, s3_key: str) -> str:
-    """Decodifica conteúdo textual baixado do S3."""
-
-    for encoding in ("utf-8", "latin-1", "utf-8-sig"):
-        try:
-            return raw_bytes.decode(encoding)
-        except UnicodeDecodeError:
-            continue
-
-    raise ValueError(f"Não foi possível decodificar o arquivo: {s3_key}")
-
-
-def download_from_s3(s3_key: str) -> str:
-    """Baixa o arquivo textual do S3 e retorna o conteúdo como string."""
-    return decode_file_content(download_bytes_from_s3(s3_key), s3_key)
 
 
 def save_transactions(transactions: list[dict], user_id: str) -> int:
@@ -148,32 +131,24 @@ def prepare_transactions_for_review(raw_transactions: list[dict], user_id: str) 
 
 def extract_raw_transactions(s3_key: str, file_type: str, bank: str) -> tuple[list[dict], bool]:
     """
-    Extrai transações brutas do arquivo.
+    Extrai transações brutas do PDF.
     Retorna também se o processamento ficará assíncrono.
     """
-    if file_type == "ofx":
-        content = download_from_s3(s3_key)
-        return ofx_parser.parse(content), False
+    if file_type != "pdf":
+        raise ValueError("Apenas extratos em PDF são aceitos.")
 
-    if file_type == "csv":
-        content = download_from_s3(s3_key)
-        return csv_parser.parse(content, bank=bank), False
+    pdf_bytes = download_bytes_from_s3(s3_key)
+    raw_transactions = pdf_parser.parse_pdf_bytes(pdf_bytes, bank=bank)
+    if raw_transactions:
+        return raw_transactions, False
 
-    if file_type == "pdf":
-        pdf_bytes = download_bytes_from_s3(s3_key)
-        raw_transactions = pdf_parser.parse_pdf_bytes(pdf_bytes, bank=bank)
-        if raw_transactions:
-            return raw_transactions, False
+    if not textract_is_available():
+        raise ValueError(
+            "Não foi possível extrair texto deste PDF e o OCR via Textract "
+            "não está disponível na região AWS atual."
+        )
 
-        if not textract_is_available():
-            raise ValueError(
-                "Não foi possível extrair texto deste PDF e o OCR via Textract "
-                "não está disponível na região AWS atual."
-            )
-
-        return [], True
-
-    raise ValueError(f"file_type inválido: {file_type}")
+    return [], True
 
 
 def review_payload(transactions: list[dict], user_id: str) -> dict:
@@ -335,12 +310,14 @@ def handler(event, context):
     if path.endswith("/upload-url") and method == "POST":
         if not user_id:
             return response(401, {"error": "não autenticado"})
-        filename = body.get("filename", "extrato.ofx")
-        file_type = body.get("file_type", "ofx")
+        filename = body.get("filename", "extrato.pdf")
+        file_type = body.get("file_type", "pdf").lower()
+        if file_type != "pdf":
+            return response(400, {"error": "Apenas extratos em PDF são aceitos."})
         return response(200, generate_presigned_url(user_id, filename, file_type))
 
     s3_key    = body.get("s3_key")
-    file_type = body.get("file_type", "ofx").lower()
+    file_type = body.get("file_type", "pdf").lower()
     bank      = body.get("bank", "nubank").lower()
     action    = body.get("action", "process").lower()
 
@@ -380,7 +357,7 @@ def handler(event, context):
                 {
                     "error": (
                         "Este PDF precisa de OCR assíncrono. A revisão prévia "
-                        "está disponível para OFX, CSV e PDFs com texto embutido."
+                        "está disponível para PDFs com texto embutido."
                     ),
                 },
             )
