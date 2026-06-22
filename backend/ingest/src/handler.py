@@ -2,10 +2,12 @@ import json
 import os
 import boto3
 from decimal import Decimal
+from datetime import datetime, timezone
+from boto3.dynamodb.conditions import Key
 
 from parsers import pdf_parser
 from normalizer import normalize
-from categorizer import CATEGORY_RULES, categorize_batch
+from categorizer import CATEGORY_RULES, category_memory_signature, categorize_batch
 
 s3        = boto3.client("s3")
 dynamodb  = boto3.resource("dynamodb")
@@ -57,6 +59,65 @@ def download_bytes_from_s3(s3_key: str) -> bytes:
     """Baixa o arquivo do S3 e retorna o conteúdo em bytes."""
     response = s3.get_object(Bucket=bucket, Key=s3_key)
     return response["Body"].read()
+
+
+def load_category_memory(user_id: str) -> dict[str, str]:
+    """Carrega aprendizados de categoria do usuário para uso local."""
+    result = table.query(
+        KeyConditionExpression=(
+            Key("PK").eq(f"USER#{user_id}") &
+            Key("SK").begins_with("CATEGORY_MEMORY#")
+        )
+    )
+    memory = {}
+    for item in result.get("Items", []):
+        signature = item.get("signature")
+        category = item.get("category")
+        if signature and category:
+            memory[str(signature)] = str(category)
+    return memory
+
+
+def remember_transaction_categories(transactions: list[dict], user_id: str) -> None:
+    """Persiste categorias confirmadas para priorizar futuras sugestões."""
+    now = datetime.now(timezone.utc).isoformat()
+
+    for txn in transactions:
+        category = txn.get("category")
+        if not category:
+            continue
+
+        signature = txn.get("categoryMemorySignature") or category_memory_signature(
+            txn.get("description", "")
+        )
+        if not signature:
+            continue
+
+        table.update_item(
+            Key={
+                "PK": f"USER#{user_id}",
+                "SK": f"CATEGORY_MEMORY#{signature}",
+            },
+            UpdateExpression=(
+                "SET #signature = :signature, #category = :category, "
+                "#description_sample = :description, #updated_at = :updated_at "
+                "ADD #usage_count :one"
+            ),
+            ExpressionAttributeNames={
+                "#signature": "signature",
+                "#category": "category",
+                "#description_sample": "description_sample",
+                "#updated_at": "updated_at",
+                "#usage_count": "usage_count",
+            },
+            ExpressionAttributeValues={
+                ":signature": signature,
+                ":category": category,
+                ":description": txn.get("description", ""),
+                ":updated_at": now,
+                ":one": 1,
+            },
+        )
 
 
 def save_transactions(transactions: list[dict], user_id: str) -> int:
@@ -115,6 +176,7 @@ def process_raw_transactions(raw_transactions: list[dict], user_id: str) -> int:
     categorized = prepare_transactions_for_review(raw_transactions, user_id)
 
     saved = save_transactions(categorized, user_id)
+    remember_transaction_categories(categorized, user_id)
     print(f"[INFO] {saved} transações salvas no DynamoDB")
 
     publish_to_sqs(user_id, saved)
@@ -126,7 +188,7 @@ def process_raw_transactions(raw_transactions: list[dict], user_id: str) -> int:
 def prepare_transactions_for_review(raw_transactions: list[dict], user_id: str) -> list[dict]:
     """Normaliza e categoriza transações sem persistir."""
     normalized = normalize(raw_transactions, user_id)
-    return categorize_batch(normalized)
+    return categorize_batch(normalized, load_category_memory(user_id))
 
 
 def extract_raw_transactions(s3_key: str, file_type: str, bank: str) -> tuple[list[dict], bool]:
@@ -201,6 +263,7 @@ def sanitize_reviewed_transactions(transactions: list[dict], user_id: str) -> li
 def confirm_reviewed_transactions(transactions: list[dict], user_id: str) -> int:
     sanitized = sanitize_reviewed_transactions(transactions, user_id)
     saved = save_transactions(sanitized, user_id)
+    remember_transaction_categories(sanitized, user_id)
     print(f"[INFO] {saved} transações revisadas salvas no DynamoDB")
     publish_to_sqs(user_id, saved)
     print(f"[INFO] Evento publicado no SQS para user {user_id}")

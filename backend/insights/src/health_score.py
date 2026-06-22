@@ -1,6 +1,9 @@
 from decimal import Decimal
 
 
+SAVINGS_CATEGORY = "cofrinho_poupanca"
+
+
 def calculate_health_score(transactions: list[dict], ipca_monthly: float | None) -> dict:
     """
     Calcula indicadores de saúde financeira a partir das transações.
@@ -15,6 +18,7 @@ def calculate_health_score(transactions: list[dict], ipca_monthly: float | None)
     """
     total_income   = Decimal("0")
     total_expenses = Decimal("0")
+    total_savings_movements = Decimal("0")
     by_category: dict[str, Decimal] = {}
     by_month: dict[str, dict]       = {}
 
@@ -23,6 +27,17 @@ def calculate_health_score(transactions: list[dict], ipca_monthly: float | None)
         date       = txn.get("bookingDate", "")[:7] 
         category   = txn.get("category", "outros")
         txn_type   = txn.get("creditDebitType", "DEBIT")
+
+        if category == SAVINGS_CATEGORY:
+            total_savings_movements += abs(raw_amount)
+            if date:
+                if date not in by_month:
+                    by_month[date] = {"income": Decimal("0"), "expenses": Decimal("0")}
+                by_month[date]["savings_movements"] = (
+                    by_month[date].get("savings_movements", Decimal("0"))
+                    + abs(raw_amount)
+                )
+            continue
 
         if txn_type == "CREDIT":
             total_income += raw_amount
@@ -58,12 +73,14 @@ def calculate_health_score(transactions: list[dict], ipca_monthly: float | None)
     return {
         "total_income":        float(total_income),
         "total_expenses":      float(total_expenses),
+        "total_savings_movements": float(total_savings_movements),
         "savings_rate":        round(savings_rate, 2),
         "expenses_by_category": {k: float(v) for k, v in by_category.items()},
         "monthly_evolution":   {
             month: {
                 "income":   float(v["income"]),
                 "expenses": float(v["expenses"]),
+                "savings_movements": float(v.get("savings_movements", Decimal("0"))),
                 "balance":  float(v["income"] - v["expenses"]),
             }
             for month, v in sorted(by_month.items())

@@ -14,6 +14,7 @@ dynamodb = boto3.resource("dynamodb")
 transactions_table = dynamodb.Table(os.environ["TRANSACTIONS_TABLE"])
 market_cache_table = dynamodb.Table(os.environ["MARKET_CACHE_TABLE"])
 topic_arn          = os.environ["BUDGET_ALERTS_TOPIC_ARN"]
+SAVINGS_CATEGORY   = "cofrinho_poupanca"
 
 CORS_HEADERS = {
     "Access-Control-Allow-Origin": "*",
@@ -90,6 +91,9 @@ def group_transactions_by_category(transactions: list[dict]) -> dict[str, list[d
             continue
 
         category = txn.get("category", "outros")
+        if category == SAVINGS_CATEGORY:
+            continue
+
         grouped.setdefault(category, []).append({
             "transactionId": txn.get("transactionId", ""),
             "bookingDate": txn.get("bookingDate", ""),
@@ -117,6 +121,8 @@ def list_income_transactions(transactions: list[dict]) -> list[dict]:
 
     for txn in transactions:
         if txn.get("creditDebitType") != "CREDIT":
+            continue
+        if txn.get("category") == SAVINGS_CATEGORY:
             continue
 
         income_transactions.append({

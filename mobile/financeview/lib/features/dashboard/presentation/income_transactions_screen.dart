@@ -75,7 +75,7 @@ class IncomeTransactionsScreen extends ConsumerWidget {
                       child: Icon(Icons.arrow_downward, size: 20),
                     ),
                     title: Text(description),
-                    subtitle: Text('$date • $category'),
+                    subtitle: Text('$date • ${_formatCategory(category)}'),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -172,4 +172,28 @@ double _transactionAmount(Map<String, dynamic> transaction) {
   return double.tryParse(rawAmount?.toString() ?? '') ??
       double.tryParse(amount?.toString() ?? '') ??
       0;
+}
+
+String _formatCategory(String category) {
+  const labels = {
+    'alimentacao': 'Alimentação',
+    'transporte': 'Transporte',
+    'moradia': 'Moradia',
+    'saude': 'Saúde',
+    'educacao': 'Educação',
+    'lazer': 'Lazer',
+    'vestuario': 'Vestuário',
+    'financeiro': 'Financeiro',
+    'receita': 'Receita',
+    'salario': 'Salário',
+    'cofrinho_poupanca': 'Cofrinho/Poupança',
+    'outros': 'Outros',
+  };
+  return labels[category] ??
+      category
+          .split('_')
+          .map((part) => part.isEmpty
+              ? part
+              : '${part[0].toUpperCase()}${part.substring(1)}')
+          .join(' ');
 }

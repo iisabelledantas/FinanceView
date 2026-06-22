@@ -28,6 +28,10 @@ class ImportReviewTransaction {
   final String amount;
   final String currency;
   final double rawAmount;
+  final String suggestedCategory;
+  final String categorySuggestionSource;
+  final double categorySuggestionConfidence;
+  final String categoryMemorySignature;
 
   const ImportReviewTransaction({
     required this.transactionId,
@@ -41,6 +45,10 @@ class ImportReviewTransaction {
     required this.amount,
     required this.currency,
     required this.rawAmount,
+    this.suggestedCategory = '',
+    this.categorySuggestionSource = '',
+    this.categorySuggestionConfidence = 0,
+    this.categoryMemorySignature = '',
   });
 
   factory ImportReviewTransaction.fromJson(Map<String, dynamic> json) {
@@ -57,6 +65,12 @@ class ImportReviewTransaction {
       amount: amount['amount']?.toString() ?? '0.00',
       currency: amount['currency'] as String? ?? 'BRL',
       rawAmount: double.tryParse(json['rawAmount'].toString()) ?? 0,
+      suggestedCategory: json['suggestedCategory'] as String? ?? '',
+      categorySuggestionSource:
+          json['categorySuggestionSource'] as String? ?? '',
+      categorySuggestionConfidence:
+          double.tryParse(json['categorySuggestionConfidence'].toString()) ?? 0,
+      categoryMemorySignature: json['categoryMemorySignature'] as String? ?? '',
     );
   }
 
@@ -75,6 +89,10 @@ class ImportReviewTransaction {
         'currency': currency,
       },
       'rawAmount': rawAmount,
+      'suggestedCategory': suggestedCategory,
+      'categorySuggestionSource': categorySuggestionSource,
+      'categorySuggestionConfidence': categorySuggestionConfidence,
+      'categoryMemorySignature': categoryMemorySignature,
     };
   }
 
@@ -99,6 +117,10 @@ class ImportReviewTransaction {
       amount: amount,
       currency: currency,
       rawAmount: normalizedRawAmount,
+      suggestedCategory: suggestedCategory,
+      categorySuggestionSource: categorySuggestionSource,
+      categorySuggestionConfidence: categorySuggestionConfidence,
+      categoryMemorySignature: categoryMemorySignature,
     );
   }
 }
@@ -566,7 +588,7 @@ class _TransactionReviewItem extends StatelessWidget {
                         .map(
                           (category) => DropdownMenuItem(
                             value: category,
-                            child: Text(category),
+                            child: Text(_formatCategory(category)),
                           ),
                         )
                         .toList(),
@@ -584,4 +606,28 @@ class _TransactionReviewItem extends StatelessWidget {
       ),
     );
   }
+}
+
+String _formatCategory(String category) {
+  const labels = {
+    'alimentacao': 'Alimentação',
+    'transporte': 'Transporte',
+    'moradia': 'Moradia',
+    'saude': 'Saúde',
+    'educacao': 'Educação',
+    'lazer': 'Lazer',
+    'vestuario': 'Vestuário',
+    'financeiro': 'Financeiro',
+    'receita': 'Receita',
+    'salario': 'Salário',
+    'cofrinho_poupanca': 'Cofrinho/Poupança',
+    'outros': 'Outros',
+  };
+  return labels[category] ??
+      category
+          .split('_')
+          .map((part) => part.isEmpty
+              ? part
+              : '${part[0].toUpperCase()}${part.substring(1)}')
+          .join(' ');
 }

@@ -275,6 +275,22 @@ double _transactionAmount(Map<String, dynamic> transaction) {
 }
 
 String _formatCategory(String category) {
+  const labels = {
+    'alimentacao': 'Alimentação',
+    'transporte': 'Transporte',
+    'moradia': 'Moradia',
+    'saude': 'Saúde',
+    'educacao': 'Educação',
+    'lazer': 'Lazer',
+    'vestuario': 'Vestuário',
+    'financeiro': 'Financeiro',
+    'receita': 'Receita',
+    'salario': 'Salário',
+    'cofrinho_poupanca': 'Cofrinho/Poupança',
+    'outros': 'Outros',
+  };
+  if (labels.containsKey(category)) return labels[category]!;
+
   return category
       .split('_')
       .map((part) =>
@@ -291,6 +307,8 @@ IconData _categoryIcon(String category) => switch (category) {
       'lazer' => Icons.sports_esports,
       'vestuario' => Icons.checkroom,
       'financeiro' => Icons.account_balance,
+      'receita' => Icons.payments,
       'salario' => Icons.payments,
+      'cofrinho_poupanca' => Icons.savings,
       _ => Icons.category,
     };

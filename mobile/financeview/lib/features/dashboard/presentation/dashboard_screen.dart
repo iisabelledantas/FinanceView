@@ -55,6 +55,9 @@ class DashboardScreen extends ConsumerWidget {
                     (health['total_expenses'] as num?)?.toDouble() ?? 0;
                 final savings =
                     (health['savings_rate'] as num?)?.toDouble() ?? 0;
+                final savingsMovements =
+                    (health['total_savings_movements'] as num?)?.toDouble() ??
+                        0;
                 final byCategory =
                     health['expenses_by_category'] as Map<String, dynamic>? ??
                         {};
@@ -82,7 +85,12 @@ class DashboardScreen extends ConsumerWidget {
                               onTap: () => context.go('/transactions'))),
                     ]),
                     const SizedBox(height: 8),
-                    _SavingsCard(rate: savings, vsIpca: vsIpca),
+                    _SavingsCard(
+                      rate: savings,
+                      savingsMovements: savingsMovements,
+                      vsIpca: vsIpca,
+                      formatter: fmt,
+                    ),
                     const SizedBox(height: 16),
 
                     // Gráfico de pizza por categoria
@@ -203,8 +211,15 @@ class _SummaryCard extends StatelessWidget {
 
 class _SavingsCard extends StatelessWidget {
   final double rate;
+  final double savingsMovements;
   final Map<String, dynamic>? vsIpca;
-  const _SavingsCard({required this.rate, required this.vsIpca});
+  final NumberFormat formatter;
+  const _SavingsCard({
+    required this.rate,
+    required this.savingsMovements,
+    required this.vsIpca,
+    required this.formatter,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -235,6 +250,11 @@ class _SavingsCard extends StatelessWidget {
                         ? 'Acima da inflação (IPCA ${ipca.toStringAsFixed(2)}%/mês) ✓'
                         : 'Abaixo da inflação (IPCA ${ipca.toStringAsFixed(2)}%/mês)',
                     style: Theme.of(context).textTheme.bodySmall),
+                if (savingsMovements > 0)
+                  Text(
+                    'Cofrinho/Poupança: ${formatter.format(savingsMovements)}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
               ])),
         ]),
       ),
