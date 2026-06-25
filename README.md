@@ -2,6 +2,8 @@
 
 FinanceView é uma aplicação mobile de finanças pessoais com backend serverless na AWS. O projeto permite importar extratos em PDF, revisar transações, categorizar gastos localmente, acompanhar receitas/despesas, gerenciar metas e consultar análises financeiras.
 
+Video: https://drive.google.com/file/d/1mZbEX1dxxDS-aerZM5itsiyToOQkgiZc/view?usp=sharing
+
 ## Principais funcionalidades
 
 - App mobile em Flutter com autenticação, dashboard, extratos, importação, análise e metas.
